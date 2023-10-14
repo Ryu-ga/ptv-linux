@@ -243,7 +243,7 @@ static int vs_drm_bind(struct device *dev)
 
 	drm_mode_config_reset(drm_dev);
 
-	drm_dev->irq_enabled = true;
+	//drm_dev->irq_enabled = true;
 
 	drm_kms_helper_poll_init(drm_dev);
 
