@@ -57,12 +57,15 @@ riscv-march-$(CONFIG_RISCV_ISA_C)	:= $(riscv-march-y)c
 # instructions from the I extension to the Zicsr and Zifencei extensions.
 toolchain-need-zicsr-zifencei := $(call cc-option-yn, -march=$(riscv-march-y)_zicsr_zifencei)
 riscv-march-$(toolchain-need-zicsr-zifencei) := $(riscv-march-y)_zicsr_zifencei
+toolchain-need-zba-zbb := $(call cc-option-yn, -march=$(riscv-march-y)_zba_zbb)
+riscv-march-$(toolchain-need-zicsr-zifencei) := $(riscv-march-y)_zba_zbb
 
-KBUILD_CFLAGS += -march=$(subst fd,,$(riscv-march-y))
+KBUILD_CFLAGS += -march=$(subst fd,,$(riscv-march-y)) 
 KBUILD_AFLAGS += -march=$(riscv-march-y)
 
 KBUILD_CFLAGS += -mno-save-restore
 KBUILD_CFLAGS += -DCONFIG_PAGE_OFFSET=$(CONFIG_PAGE_OFFSET)
+KBUILD_CFLAGS += -mcpu=sifive-u74
 
 ifeq ($(CONFIG_CMODEL_MEDLOW),y)
 	KBUILD_CFLAGS += -mcmodel=medlow

@@ -525,7 +525,6 @@
 	i2c-scl-falling-time-ns = <510>;
 	auto_calc_scl_lhcnt;
 	status = "okay";
-
 	touchscreen@14 {
 		status = "okay";
 		compatible = "goodix,gt911";

@@ -121,7 +121,7 @@
 	es8316_mclk: es8316_mclk {
 		compatible = "fixed-clock";
 		#clock-cells = <0>;
-		clock-frequency = <1228800>;
+		clock-frequency = <12288000>;
 	};
 
 	ac108_mclk: ac108_mclk {
