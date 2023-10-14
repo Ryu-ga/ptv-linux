@@ -82,6 +82,8 @@ static int panel_bridge_attach(struct drm_bridge *bridge,
 	drm_connector_attach_encoder(&panel_bridge->connector,
 					  bridge->encoder);
 
+	drm_panel_bridge_set_orientation(connector, bridge);
+
 	return 0;
 }
 
@@ -150,6 +152,19 @@ static const struct drm_bridge_funcs panel_bridge_bridge_funcs = {
 	.atomic_destroy_state = drm_atomic_helper_bridge_destroy_state,
 	.atomic_get_input_bus_fmts = drm_atomic_helper_bridge_propagate_bus_fmt,
 };
+
+/**
+ * drm_bridge_is_panel - Checks if a drm_bridge is a panel_bridge.
+ *
+ * @bridge: The drm_bridge to be checked.
+ *
+ * Returns true if the bridge is a panel bridge, or false otherwise.
+ */
+bool drm_bridge_is_panel(const struct drm_bridge *bridge)
+{
+	return bridge->funcs == &panel_bridge_bridge_funcs;
+}
+EXPORT_SYMBOL(drm_bridge_is_panel);
 
 /**
  * drm_panel_bridge_add - Creates a &drm_bridge and &drm_connector that
@@ -256,6 +271,27 @@ static void devm_drm_panel_bridge_release(struct device *dev, void *res)
 
 	drm_panel_bridge_remove(*bridge);
 }
+
+/**
+ * drm_panel_bridge_set_orientation - Set the connector's panel orientation
+ * from the bridge that can be transformed to panel bridge.
+ *
+ * @connector: The connector to be set panel orientation.
+ * @bridge: The drm_bridge to be transformed to panel bridge.
+ *
+ * Returns 0 on success, negative errno on failure.
+ */
+int drm_panel_bridge_set_orientation(struct drm_connector *connector,
+                                    struct drm_bridge *bridge)
+{
+       struct panel_bridge *panel_bridge;
+
+       panel_bridge = drm_bridge_to_panel_bridge(bridge);
+
+       return drm_connector_set_orientation_from_panel(connector,
+                                                       panel_bridge->panel);
+}
+EXPORT_SYMBOL(drm_panel_bridge_set_orientation);
 
 /**
  * devm_drm_panel_bridge_add - Creates a managed &drm_bridge and &drm_connector

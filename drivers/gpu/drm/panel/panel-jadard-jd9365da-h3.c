@@ -87,6 +87,8 @@ struct jadard {
 	struct regulator *vccio;
 	struct gpio_desc *reset;
 	struct gpio_desc *enable;
+	struct gpio_desc *blen;
+	enum drm_panel_orientation orientation;
 	bool enable_initialized;
 	int choosemode;
 };
@@ -227,13 +229,13 @@ static int jadard_prepare(struct drm_panel *panel)
 	gpiod_set_value(jadard->enable, 1);
 	mdelay(100);
 
-	gpiod_direction_output(jadard->reset, 0);
+	/*gpiod_direction_output(jadard->reset, 0);
 	mdelay(100);
 	gpiod_set_value(jadard->reset, 1);
 	mdelay(100);
 	gpiod_set_value(jadard->reset, 0);
 	mdelay(100);
-	gpiod_set_value(jadard->reset, 1);
+	gpiod_set_value(jadard->reset, 1);*/
 	mdelay(150);
 
 	return 0;
@@ -243,7 +245,7 @@ static int jadard_unprepare(struct drm_panel *panel)
 {
 	struct jadard *jadard = panel_to_jadard(panel);
 
-	gpiod_set_value(jadard->reset, 1);
+	//gpiod_set_value(jadard->reset, 1);
 	msleep(120);
 #if 0
 	regulator_disable(jadard->vdd);
@@ -272,6 +274,8 @@ static int jadard_get_modes(struct drm_panel *panel,
 
 	connector->display_info.width_mm = mode->width_mm;
 	connector->display_info.height_mm = mode->height_mm;
+
+	drm_connector_set_panel_orientation(connector, jadard->orientation);
 
 	return 1;
 }
@@ -579,7 +583,7 @@ static int panel_probe(struct i2c_client *client, const struct i2c_device_id *id
 
 	struct mipi_dsi_device_info info = {
 		.type = DSI_DRIVER_NAME,
-		.channel = 1, //0,
+		.channel = 3, //0,
 		.node = NULL,
 	};
 
@@ -603,7 +607,15 @@ static int panel_probe(struct i2c_client *client, const struct i2c_device_id *id
 	jd_panel->reset = devm_gpiod_get(dev, "reset", GPIOD_OUT_HIGH);
 	if (IS_ERR(jd_panel->reset)) {
 		DRM_DEV_ERROR(dev, "failed to get our reset GPIO\n");
-		return PTR_ERR(jd_panel->reset);
+		//return PTR_ERR(jd_panel->reset);
+	}
+	jd_panel->blen = devm_gpiod_get(dev, "blen", GPIOD_OUT_HIGH);
+	if (IS_ERR(jd_panel->blen)) {
+		DRM_DEV_ERROR(dev, "failed to get our blen GPIO\n");
+		//return PTR_ERR(jd_panel->reset);
+	} else {
+		gpiod_direction_output(jd_panel->blen, 0);
+		gpiod_set_value(jd_panel->blen, 1);
 	}
 
 	jd_panel->enable = devm_gpiod_get(dev, "enable", GPIOD_OUT_LOW);
@@ -639,18 +651,33 @@ static int panel_probe(struct i2c_client *client, const struct i2c_device_id *id
 	drm_panel_init(&jd_panel->panel, dev, &jadard_funcs,
 		       DRM_MODE_CONNECTOR_DSI);
 
+	ret = of_drm_get_panel_orientation(dev->of_node, &jd_panel->orientation);
+	if (ret) {
+		DRM_DEV_ERROR(dev, "%pOF: failed to get orientation %d\n", dev->of_node, ret);
+		goto error;
+	}
+	DRM_DEV_ERROR(dev, "%pOF: get orientation %d\n", dev->of_node, jd_panel->orientation);
+
+	ret = drm_panel_of_backlight(&jd_panel->panel);
+	if (ret) {
+		DRM_DEV_ERROR(dev, "failed to get backlight: %d\n", ret);
+		goto error;
+	}
+
 	drm_panel_add(&jd_panel->panel);
 
 	info.node = of_node_get(of_graph_get_remote_port(endpoint));
-	if (!info.node)
+	if (!info.node) {
+		DRM_DEV_ERROR(dev, "failed to get remote port\n");
 		goto error;
+	}
 
 	of_node_put(endpoint);
 	jd_panel->desc = desc;
 
 	jd_panel->dsi = mipi_dsi_device_register_full(host, &info);
 	if (IS_ERR(jd_panel->dsi)) {
-		dev_err(dev, "DSI device registration failed: %ld\n",
+		DRM_DEV_ERROR(dev, "DSI device registration failed: %ld\n",
 			PTR_ERR(jd_panel->dsi));
 		return PTR_ERR(jd_panel->dsi);
 	}
@@ -768,11 +795,11 @@ static int jadard_dsi_probe(struct mipi_dsi_device *dsi)
 
 	int ret;
 
-	dsi->mode_flags = MIPI_DSI_MODE_LPM | MIPI_DSI_MODE_VIDEO | MIPI_DSI_MODE_VIDEO_SYNC_PULSE ;
+	dsi->mode_flags = MIPI_DSI_MODE_LPM | MIPI_DSI_MODE_VIDEO | MIPI_DSI_MODE_VIDEO_SYNC_PULSE | MIPI_DSI_CLOCK_NON_CONTINUOUS;
 	dsi->format = MIPI_DSI_FMT_RGB888;
 	dsi->lanes = 4;
-	dsi->channel = 1;
-	dsi->hs_rate = 490000000;
+	dsi->channel = 3;
+	dsi->hs_rate = 400000000;
 
 	ret = mipi_dsi_attach(dsi);
 	if (ret < 0) {

@@ -847,6 +847,8 @@ static int cdns_dsi_check_conf(struct cdns_dsi *dsi,
 		phy_cfg->hs_clk_rate = 490000000;//8 inch
 	} else if (mode->vdisplay == 1920) {
 		phy_cfg->hs_clk_rate = 980000000;//10 inch
+	} else if (output->dev->channel == 3){
+		phy_cfg->hs_clk_rate = 400000000;
 	}
 
 	dsi_cfg->htotal = dsi_cfg->hsa + DSI_HSA_FRAME_OVERHEAD +
